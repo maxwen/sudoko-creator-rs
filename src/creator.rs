@@ -1,10 +1,12 @@
-use std::cmp::PartialEq;
+use alloc::vec::Vec;
+use core::cmp::PartialEq;
 use rand::{Rng, thread_rng};
 use rand::prelude::SliceRandom;
 
 use crate::board::{BOARD_BLOCK_SIZE, BOARD_SIZE, SudokuBoard};
 use crate::solver::Solver;
 
+#[allow (dead_code)]
 pub enum Difficulty {
     EASY = 35,
     MEDIUM = 45,
@@ -31,7 +33,7 @@ pub struct Creator {
 impl Creator {
     pub fn new() -> Self {
         Creator {
-            riddle: SudokuBoard::new()
+            riddle: SudokuBoard::new(),
         }
     }
 
@@ -46,7 +48,7 @@ impl Creator {
         }
     }
 
-    fn random_numbers(&self) -> Vec<u8> {
+    fn random_numbers(&mut self) -> Vec<u8> {
         let mut vec: Vec<u8> = (1..(BOARD_SIZE + 1) as u8).collect();
         vec.shuffle(&mut thread_rng());
         vec
@@ -58,7 +60,7 @@ impl Creator {
         }
 
         let least_free_cell = self.riddle.find_least_free_cell();
-        if (least_free_cell == (-1, -1)) {
+        if least_free_cell == (-1, -1) {
             return BacktrackingResult::CONTRADICTION;
         }
         let row = least_free_cell.0 as usize;
@@ -75,10 +77,9 @@ impl Creator {
         self.riddle.set(row, col, 0);
         BacktrackingResult::CONTINUE
     }
-    pub fn create_full() -> SudokuBoard {
-        let mut creator = Creator::new();
+    pub fn create_full(&mut self) -> SudokuBoard {
         loop {
-            creator.riddle.clear();
+            self.riddle.clear();
 
             // * 0 0
             // 0 * 0
@@ -88,17 +89,17 @@ impl Creator {
             // because they can not collide.
             // There can be a contradiction later on anyway.
             for i in 0..BOARD_BLOCK_SIZE {
-                creator.fill_block(i * BOARD_BLOCK_SIZE, i * BOARD_BLOCK_SIZE)
+                self.fill_block(i * BOARD_BLOCK_SIZE, i * BOARD_BLOCK_SIZE)
             }
-            let result = creator.backtrack(creator.riddle.free_count());
+            let result = self.backtrack(self.riddle.free_count());
             if result == BacktrackingResult::FOUND {
                 break
             }
         }
-        creator.riddle.clone()
+        self.riddle.clone()
     }
 
-    pub fn can_clear(riddle: &mut SudokuBoard, row: usize, col: usize) -> bool
+    pub fn can_clear(&self, riddle: &mut SudokuBoard, row: usize, col: usize) -> bool
     {
         let free_nums = riddle.free_values(row, col);
         if free_nums.len() == 0 {
@@ -109,12 +110,12 @@ impl Creator {
         riddle.set(row, col, 0);
 
         let mut solver = Solver::new(riddle.clone());
-        let solutions = solver.solve();
+        let solutions = solver.alt_solve();
         let result = solutions.len() == 1;
         riddle.set(row, col, old_val);
         return result;
     }
-    pub fn create_riddle(full: SudokuBoard, difficulty: Difficulty) -> SudokuBoard {
+    pub fn create_riddle(&mut self, full: SudokuBoard, difficulty: Difficulty) -> SudokuBoard {
         let mut to_remove = difficulty as u8;
         let mut removed = 0;
         let mut riddle = SudokuBoard::new();
@@ -126,7 +127,7 @@ impl Creator {
             let row = thread_rng().gen_range(0..BOARD_SIZE);
 
             if riddle.get(row, col) != 0 {
-                if Self::can_clear(&mut riddle, row, col) {
+                if self.can_clear(&mut riddle, row, col) {
                     riddle.set(row, col, 0);
                     to_remove -= 1;
                     removed +=1;
@@ -140,13 +141,14 @@ impl Creator {
             for col in 0..BOARD_SIZE {
                 if to_remove > 0
                     && riddle.get(row, col) != 0
-                    && Self::can_clear(&mut riddle, row, col) {
+                    && self.can_clear(&mut riddle, row, col) {
                     riddle.set(row, col, 0);
                     to_remove -= 1;
                     removed +=1;
                 }
             }
         }
+        println!("removed = {}", removed);
         riddle
     }
 }

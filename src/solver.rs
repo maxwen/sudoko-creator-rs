@@ -1,3 +1,8 @@
+use alloc::vec;
+use alloc::vec::Vec;
+
+use sudoku::Sudoku;
+
 use crate::board::SudokuBoard;
 
 pub struct Solver {
@@ -5,6 +10,7 @@ pub struct Solver {
     solutions: Vec<SudokuBoard>,
 }
 
+#[allow (dead_code)]
 impl Solver {
     pub fn new(riddle: SudokuBoard) -> Self {
         Solver {
@@ -15,8 +21,20 @@ impl Solver {
 
     pub fn solve(&mut self) -> Vec<SudokuBoard> {
         self.solutions.clear();
-
         self.backtrack(self.riddle.free_count());
+        self.solutions.clone()
+    }
+
+    pub fn alt_solve(&mut self) -> Vec<SudokuBoard> {
+        self.solutions.clear();
+
+        let sudoku = Sudoku::from_str_line(self.riddle.to_line_format().as_str()).unwrap();
+        if let Some(solution) = sudoku.solution() {
+            if let Ok(_) = self.riddle.from_line_format(solution.to_str_line().as_bytes()) {
+                self.solutions.push(self.riddle.clone());
+            }
+        }
+
         self.solutions.clone()
     }
 
@@ -31,7 +49,7 @@ impl Solver {
         }
 
         let least_free_cell = self.riddle.find_least_free_cell();
-        if (least_free_cell == (-1, -1)) {
+        if least_free_cell == (-1, -1) {
             return 0;
         }
 

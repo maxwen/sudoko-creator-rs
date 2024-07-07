@@ -1,7 +1,7 @@
-use std::collections::HashSet;
-use std::fmt;
-use std::fmt::{Display, Error, Formatter};
-use std::hash::Hash;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::fmt::{Display, Formatter};
+// use core::hash::Hash;
 
 pub const BOARD_SIZE: usize = 9;
 pub const BOARD_BLOCK_SIZE: usize = 3;
@@ -13,6 +13,7 @@ pub struct SudokuBoard {
     ans: SudokuMatrix,
 }
 
+#[allow(dead_code)]
 impl SudokuBoard {
     pub fn new() -> Self {
         SudokuBoard {
@@ -45,15 +46,14 @@ impl SudokuBoard {
         row_col_block_free
     }
 
-    fn has_unique_elements<T>(&self, iter: T) -> bool
-    where
-        T: IntoIterator,
-        T::Item: Eq + Hash,
-    {
-        let mut uniq = HashSet::new();
-        iter.into_iter().all(move |x| uniq.insert(x))
+    fn has_unique_elements(&self, list: [u8; BOARD_SIZE]) -> bool {
+        for i in 1..list.len() {
+            if list[i..].contains(&list[i - 1]) {
+                return false;
+            }
+        }
+        true
     }
-
     fn index_of_value(&self, list: &Vec<u8>, val: u8) -> Option<usize> {
         list.iter().position(|&value| value == val)
     }
@@ -175,7 +175,7 @@ impl SudokuBoard {
         (BOARD_SIZE * BOARD_SIZE) as u8 - self.set_count()
     }
 
-    /* 0,0 non free
+    /* -1,-1 non free
      */
     pub fn find_least_free_cell(&self) -> (i8, i8) {
         let mut row_col_result = (-1i8, -1i8);
@@ -186,7 +186,7 @@ impl SudokuBoard {
                 continue;
             }
             for col in 0..BOARD_SIZE {
-                if (self.get(row, col) != 0) {
+                if self.get(row, col) != 0 {
                     continue;
                 }
                 let free = self.free_values(row, col);
@@ -206,9 +206,43 @@ impl SudokuBoard {
 
         row_col_result
     }
+
+    pub fn to_line_format(&self) -> String {
+        let mut line = String::new();
+        for i in 0..BOARD_SIZE {
+            let row = self.row(i);
+            for val in row {
+                line.push(to_line_char(val))
+            }
+        }
+        line
+    }
+
+    pub fn from_line_format(&mut self, chars: &[u8]) -> Result<(), ()> {
+        self.clear();
+
+        if chars.len() < BOARD_SIZE * BOARD_SIZE {
+            return Err(());
+        }
+
+        for row in 0..BOARD_SIZE {
+            for col in 0..BOARD_SIZE {
+                let cell = chars[row * BOARD_SIZE + col];
+                let mut val = cell.wrapping_sub(b'0');
+                if val == b'_' - b'0' {
+                    val = 0;
+                }
+                if val == b'.'.wrapping_sub(b'0') {
+                    val = 0;
+                }
+                self.set(row, col, val);
+            }
+        }
+        Ok(())
+    }
 }
 
-fn line(grid: &SudokuBoard, start: char, thick_sep: char, thin_sep: char,
+fn line(start: char, thick_sep: char, thin_sep: char,
         segment: impl Fn(usize) -> char, pad: char, end: char, newline: bool) -> String {
     let size = BOARD_SIZE;
     let mut result = String::new();
@@ -216,11 +250,9 @@ fn line(grid: &SudokuBoard, start: char, thick_sep: char, thin_sep: char,
     for x in 0..size {
         if x == 0 {
             result.push(start);
-        }
-        else if x % BOARD_BLOCK_SIZE == 0 {
+        } else if x % BOARD_BLOCK_SIZE == 0 {
             result.push(thick_sep);
-        }
-        else {
+        } else {
             result.push(thin_sep);
         }
 
@@ -238,54 +270,61 @@ fn line(grid: &SudokuBoard, start: char, thick_sep: char, thin_sep: char,
     result
 }
 
-fn top_row(grid: &SudokuBoard) -> String {
-    line(grid, '╔', '╦', '╤', |_| '═', '═', '╗', true)
+fn top_row() -> String {
+    line('╔', '╦', '╤', |_| '═', '═', '╗', true)
 }
 
-fn thin_separator_line(grid: &SudokuBoard) -> String {
-    line(grid, '╟', '╫', '┼', |_| '─', '─', '╢', true)
+fn thin_separator_line() -> String {
+    line('╟', '╫', '┼', |_| '─', '─', '╢', true)
 }
 
-fn thick_separator_line(grid: &SudokuBoard) -> String {
-    line(grid, '╠', '╬', '╪', |_| '═', '═', '╣', true)
+fn thick_separator_line() -> String {
+    line('╠', '╬', '╪', |_| '═', '═', '╣', true)
 }
 
-fn bottom_row(grid: &SudokuBoard) -> String {
-    line(grid, '╚', '╩', '╧', |_| '═', '═', '╝', false)
+fn bottom_row() -> String {
+    line('╚', '╩', '╧', |_| '═', '═', '╝', false)
 }
 
-fn content_row(grid: &SudokuBoard, y: usize) -> String {
-    line(grid, '║', '║', '│', |x| to_char(grid.get(x, y)), ' ',
+fn content_row(grid: &SudokuBoard, row: usize) -> String {
+    line('║', '║', '│', |col| to_char(grid.get(row, col)), ' ',
          '║', true)
 }
 
 fn to_char(val: u8) -> char {
     if val != 0 {
         (b'0' + val) as char
-    }
-    else {
+    } else {
         ' '
     }
 }
-impl Display for SudokuBoard {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let top_row = top_row(self);
-        let thin_separator_line = thin_separator_line(self);
-        let thick_separator_line = thick_separator_line(self);
-        let bottom_row = bottom_row(self);
 
-        for y in 0..BOARD_SIZE {
-            if y == 0 {
+fn to_line_char(val: u8) -> char {
+    if val != 0 {
+        (b'0' + val) as char
+    } else {
+        '.'
+    }
+}
+
+
+impl Display for SudokuBoard {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let top_row = top_row();
+        let thin_separator_line = thin_separator_line();
+        let thick_separator_line = thick_separator_line();
+        let bottom_row = bottom_row();
+
+        for row in 0..BOARD_SIZE {
+            if row == 0 {
                 f.write_str(top_row.as_str())?;
-            }
-            else if y % BOARD_BLOCK_SIZE == 0 {
+            } else if row % BOARD_BLOCK_SIZE == 0 {
                 f.write_str(thick_separator_line.as_str())?;
-            }
-            else {
+            } else {
                 f.write_str(thin_separator_line.as_str())?;
             }
 
-            f.write_str(content_row(self, y).as_str())?;
+            f.write_str(content_row(self, row).as_str())?;
         }
 
         f.write_str(bottom_row.as_str())?;
