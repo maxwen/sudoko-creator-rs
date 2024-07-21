@@ -1,7 +1,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::{Display, Formatter};
-// use core::hash::Hash;
 
 pub const BOARD_SIZE: usize = 9;
 pub const BOARD_BLOCK_SIZE: usize = 3;
