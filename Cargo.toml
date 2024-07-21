@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rand = {  version = "0.9.0-alpha.1"}
+rand = { version = "0.9.0-alpha.1" }
 getrandom = { version = "0.2", features = ["js"] }
 sudoku = "0.8.0"
+tracing = { version = "0.1.40", default-features = false }
+tracing-subscriber = { version = "0.3.18", default-features = false, features = ["fmt", "alloc"] }
 
 [profile.dev]
 opt-level = 3

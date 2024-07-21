@@ -19,12 +19,15 @@ impl Solver {
         }
     }
 
+    // simple backtrack solver
     pub fn solve(&mut self) -> Vec<SudokuBoard> {
         self.solutions.clear();
         self.backtrack(self.riddle.free_count());
         self.solutions.clone()
     }
 
+    // using alternative solver impl
+    // we have to convert our board into and to string format
     pub fn alt_solve(&mut self) -> Vec<SudokuBoard> {
         self.solutions.clear();
 

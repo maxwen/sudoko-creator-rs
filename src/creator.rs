@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 use core::cmp::PartialEq;
 use rand::{Rng, thread_rng};
 use rand::prelude::SliceRandom;
+use tracing::info;
 
 use crate::board::{BOARD_BLOCK_SIZE, BOARD_SIZE, SudokuBoard};
 use crate::solver::Solver;
@@ -110,6 +111,9 @@ impl Creator {
         riddle.set(row, col, 0);
 
         let mut solver = Solver::new(riddle.clone());
+        // simple backtrack solver
+        // let solutions = solver.solve();
+        // or custom
         let solutions = solver.alt_solve();
         let result = solutions.len() == 1;
         riddle.set(row, col, old_val);
@@ -148,7 +152,7 @@ impl Creator {
                 }
             }
         }
-        println!("removed = {}", removed);
+        info!("removed = {}", removed);
         riddle
     }
 }
